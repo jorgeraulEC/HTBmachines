@@ -68,7 +68,7 @@ Para poder usar el comando `htb-search` desde cualquier carpeta:
 
 ```bash
 # Buscar información de una máquina puntual
-./htb-search.sh -m Lame
+./htb-search.sh -m Tentacle
 
 # Ver todas las máquinas Windows
 ./htb-search.sh -o Windows
@@ -80,7 +80,7 @@ Para poder usar el comando `htb-search` desde cualquier carpeta:
 ./htb-search.sh -o Linux -d Media
 
 # Obtener el walkthrough de YouTube de una máquina
-./htb-search.sh -y Lame
+./htb-search.sh -y Tentacle
 
 # Actualizar la base de datos local
 ./htb-search.sh -u
