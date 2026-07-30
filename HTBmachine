@@ -1,0 +1,214 @@
+#!/bin/bash
+
+# ============================================================
+#  HTB Machine Search & Filter Tool
+#  Busca y filtra maquinas de HackTheBox desde el bundle publico
+# ============================================================
+
+# Colores
+greenColour="\e[0;32m\033[1m"
+endColour="\033[0m\e[0m"
+redColour="\e[0;31m\033[1m"
+blueColour="\e[0;34m\033[1m"
+yellowColour="\e[0;33m\033[1m"
+purpleColour="\e[0;35m\033[1m"
+turquoiseColour="\e[0;36m\033[1m"
+grayColour="\e[0;37m\033[1m"
+
+# Prefijos de traza reutilizables
+info()    { echo -e "${blueColour}[*]${endColour} $1"; }
+ok()      { echo -e "${greenColour}[+]${endColour} $1"; }
+warn()    { echo -e "${yellowColour}[!]${endColour} $1"; }
+error()   { echo -e "${redColour}[-]${endColour} $1"; }
+result()  { echo -e "${turquoiseColour}[>]${endColour} $1"; }
+
+# Variables globales
+main_url="https://htbmachines.github.io/bundle.js"
+
+# control c
+function ctrl_c(){
+        echo -e "\n\n${purpleColour}[!] Saliendo...${endColour}"
+        exit 1
+}
+trap ctrl_c INT
+
+# Banner inicial
+function banner(){
+        echo -e "${purpleColour}"
+        echo -e "  _   _ _____ ____    ____                      _     "
+        echo -e " | | | |_   _| __ )  / ___|  ___  __ _ _ __ ___| |__  "
+        echo -e " | |_| | | | |  _ \\  \\___ \\ / _ \\/ _\` | '__/ __| '_ \\ "
+        echo -e " |  _  | | | | |_) |  ___) |  __/ (_| | | | (__| | | |"
+        echo -e " |_| |_| |_| |____/  |____/ \\___|\\__,_|_|  \\___|_| |_|"
+        echo -e "${endColour}"
+        echo -e "${grayColour}      Buscador y filtro de maquinas HTB por consola${endColour}\n"
+}
+
+# Funcion que evalua si bundle.js existe o no, de acuerdo a eso se efectuan ordenes
+function updateFiles(){
+
+        if [ ! -f bundle.js ]; then
+
+                info "No se encontro bundle.js localmente. Instalando..."
+                curl -s $main_url > bundle.js
+                js-beautify bundle.js | sponge bundle.js
+                ok "Instalacion correcta."
+
+        else
+                # Verifica si el archivo con nombre bundle.js tiene el contenido adecuado, mediante hashes
+                info "Comprobando si hay actualizaciones..."
+
+                curl -s $main_url > bundle_temp.js
+                js-beautify bundle_temp.js | sponge bundle_temp.js
+
+                hash1=$(md5sum bundle.js | awk '{print $1}')
+                hash2=$(md5sum bundle_temp.js | awk '{print $1}')
+
+                if [ "$hash1" == "$hash2" ]; then
+                        warn "No hay actualizaciones disponibles."
+                        rm bundle_temp.js
+                else
+                        info "Se han encontrado actualizaciones pendientes..."
+                        rm -rf bundle.js && mv bundle_temp.js bundle.js
+                        ok "Actualizado correctamente :)"
+                fi
+
+        fi
+
+}
+
+# Panel de ayuda
+function helpPanel(){
+        echo -e "\n${purpleColour}Uso correcto:${endColour}"
+        echo -e " ${turquoiseColour}m)${endColour} Buscar nombre de maquina"
+        echo -e " ${turquoiseColour}h)${endColour} Mostrar panel de ayuda"
+        echo -e " ${turquoiseColour}o)${endColour} Buscar por sistema operativo"
+        echo -e " ${turquoiseColour}d)${endColour} Buscar por nivel de dificultad"
+        echo -e " ${turquoiseColour}y)${endColour} Mostrar link de youtube"
+        echo -e " ${turquoiseColour}u)${endColour} Actualizar contenido\n"
+}
+
+# searchMachine
+function searchMachine(){
+        machineName="$1"
+        info "Buscando maquina: ${machineName}..."
+
+        verificarMaquina="$(cat bundle.js | awk "/name: \"$machineName\"/,/resuelta:/ " | grep -vE "sku: | id: | resuelta:" | tr -d '""' | tr -d ',' | sed 's/^ *//')"
+
+        if [ "$verificarMaquina" ]; then
+                ok "Listando las propiedades de la maquina ${machineName}\n"
+                sleep 0.5
+                echo -e "${grayColour}$verificarMaquina${endColour}"
+        else
+                error "No se introdujo un nombre correcto."
+        fi
+}
+
+# ytLink
+function ytLink (){
+
+        machineName2=$1
+        info "Buscando link de YouTube para: ${machineName2}..."
+
+        youtubeLink="$(cat bundle.js | awk "/name: \"$machineName2\"/,/resuelta:/ " | grep -vE "sku: | id: | resuelta:" | tr -d '""' | tr -d ',' | sed 's/^ *//' | grep youtube | awk 'NF{ print $NF }')"
+
+        if [ "$youtubeLink" ]; then
+                result "El link de youtube es: ${redColour}$youtubeLink${endColour}"
+        else
+                warn "No se encontro un link asociado para esa maquina."
+        fi
+
+}
+
+# dificultadMaquina
+function dificultadMaquina (){
+
+        dificultad=$1
+        info "Filtrando maquinas por dificultad: ${dificultad}..."
+
+        dif="$(cat bundle.js | grep "dificultad: \"$dificultad\"" -B 5 | grep name | awk 'NF{print $NF}' | tr -d '""' | tr -d ',')"
+
+        if [ "$dif" ]; then
+                ok "Las maquinas con dificultad ${dificultad} son:\n"
+                cat bundle.js | grep "dificultad: \"$dificultad\"" -B 5 | grep name | awk 'NF{print $NF}' | tr -d '""' | tr -d ',' | column
+        else
+                error "Introduzca una dificultad correcta."
+                warn "Sugerencia: Fácil , Media , Difícil , Insane"
+        fi
+
+}
+
+# buscarOS
+function buscarOS (){
+        nombreOS=$1
+        info "Filtrando maquinas por sistema operativo: ${nombreOS}..."
+
+        verificarOS="$(cat bundle.js | grep " \"$nombreOS\""  -B 4 | grep "name:" | tr -d '""' | tr -d ',' | sed 's/name://' | column)"
+
+        if [ "$verificarOS" ]; then
+                ok "Las maquinas correspondientes a ese OS son las siguientes:\n"
+                cat bundle.js | grep " \"$nombreOS\""  -B 4 | grep "name:" | tr -d '""' | tr -d ',' | sed 's/name://' | column
+        else
+                error "Introduzca un OS correcto."
+                warn "Sugerencia: Linux , Windows"
+        fi
+
+}
+
+# osDifficulty
+function osDifficulty (){
+        difficulty="$2"
+        os="$1"
+        info "Filtrando por OS: ${os} y dificultad: ${difficulty}..."
+
+        check_resultados="$(cat bundle.js | grep " \"$os\""  -C 4 | grep "$difficulty" -B5 | grep "name:" | tr -d '""' | tr -d ',' | sed 's/name//' | tr -d ':' | column )"
+
+        if [ "$check_resultados" ]; then
+                ok "Las siguientes maquinas con esas especificaciones son:\n"
+                cat bundle.js | grep " \"$os\""  -C 4 | grep "$difficulty" -B5 | grep "name:" | tr -d '""' | tr -d ',' | sed 's/name//' | tr -d ':' | column
+        else
+                error "Introduzca correctamente los nombres y los parametros."
+        fi
+
+}
+
+# Declarar la variable parameter_counter (numero entero)
+declare -i parameter_counter=0
+declare -i chivato_dif=0
+declare -i chivato_os=0
+
+banner
+
+# Usaremos getopts para los parametros
+while getopts "m:hy:ud:o:" arg; do
+        case $arg in
+        m) machineName=$OPTARG ; let parameter_counter+=1;;
+        u) let parameter_counter+=2;;
+        h) ;;
+        y) machineName2=$OPTARG ; let parameter_counter+=3;;
+        d) dificultad=$OPTARG ; chivato_dif=1 ; let parameter_counter+=4;;
+        o) nombreOS=$OPTARG ; chivato_os=1 ; let parameter_counter+=5;;
+        esac
+done
+
+# bundle.js es necesario para todo salvo -h y -u
+if [ $parameter_counter -ne 0 ] && [ $parameter_counter -ne 2 ] && [ ! -f bundle.js ]; then
+        warn "No existe bundle.js. Ejecuta primero con -u para descargarlo."
+        exit 1
+fi
+
+if [ $parameter_counter -eq 1 ]; then
+        searchMachine "$machineName"
+elif [ $parameter_counter -eq 2 ]; then
+        updateFiles
+elif [ $parameter_counter -eq 3 ]; then
+        ytLink $machineName2
+elif [ $parameter_counter -eq 4 ]; then
+        dificultadMaquina $dificultad
+elif [ $parameter_counter -eq 5 ]; then
+        buscarOS $nombreOS
+elif [ $chivato_dif -eq 1 ] && [ $chivato_os -eq 1 ]; then
+        osDifficulty $nombreOS $dificultad
+else
+        helpPanel
+fi
