@@ -102,6 +102,6 @@ htb-search-tool/
 Las contribuciones son bienvenidas. Revisa [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.
 
 
-## 📄 Licencia
+## Licencia
 
 Distribuido bajo la licencia MIT. Consulta [LICENSE](LICENSE) para más información.
