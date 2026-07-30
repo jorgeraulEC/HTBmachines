@@ -86,21 +86,6 @@ Para poder usar el comando `htb-search` desde cualquier carpeta:
 ./htb-search.sh -u
 ```
 
-##  Estructura del proyecto
-
-```
-htb-search-tool/
-├── htb-search.sh     # Script principal
-├── install.sh         # Instalador opcional (uso global)
-├── README.md
-├── LICENSE
-└── .gitignore
-```
-
-##  Contribuir
-
-Las contribuciones son bienvenidas. Revisa [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.
-
 
 ## Licencia
 
